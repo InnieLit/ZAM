@@ -1,0 +1,356 @@
+-- Modern UI Library with Animations and Notifications
+local UILibrary = {}
+
+-- Services
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+-- Constants
+local TWEEN_SPEED = 0.2
+local MAIN_COLOR = Color3.fromRGB(25, 25, 35)
+local ACCENT_COLOR = Color3.fromRGB(45, 120, 255)
+local TRANSPARENCY = 0.2
+local HOVER_TRANSPARENCY = 0.1
+local TOGGLE_KEY = Enum.KeyCode.K
+
+-- Animation Config
+local AnimationConfig = {
+    OpenDuration = 0.6,
+    OpenEasingStyle = Enum.EasingStyle.Back,
+    OpenEasingDirection = Enum.EasingDirection.Out
+}
+
+-- Notification System
+local NotificationSystem = {
+    Notifications = {},
+    Gap = 10,
+    Height = 60
+}
+
+function NotificationSystem:CreateNotification(text)
+    local NotificationGui = game:GetService("CoreGui"):FindFirstChild("NotificationGui")
+    if not NotificationGui then
+        NotificationGui = Instance.new("ScreenGui")
+        NotificationGui.Name = "NotificationGui"
+        NotificationGui.Parent = game:GetService("CoreGui")
+    end
+
+    local Notification = Instance.new("Frame")
+    local NotificationCorner = Instance.new("UICorner")
+    local NotificationText = Instance.new("TextLabel")
+    local UIStroke = Instance.new("UIStroke")
+    
+    Notification.Name = "Notification"
+    Notification.Parent = NotificationGui
+    Notification.BackgroundColor3 = MAIN_COLOR
+    Notification.BackgroundTransparency = TRANSPARENCY
+    Notification.Size = UDim2.new(0, 250, 0, self.Height)
+    Notification.Position = UDim2.new(1, 20, 1, 0)
+    
+    UIStroke.Parent = Notification
+    UIStroke.Color = ACCENT_COLOR
+    UIStroke.Thickness = 1.5
+    UIStroke.Transparency = 0.5
+    
+    NotificationCorner.Parent = Notification
+    NotificationCorner.CornerRadius = UDim.new(0, 8)
+    
+    NotificationText.Name = "Text"
+    NotificationText.Parent = Notification
+    NotificationText.BackgroundTransparency = 1
+    NotificationText.Size = UDim2.new(1, -20, 1, 0)
+    NotificationText.Position = UDim2.new(0, 10, 0, 0)
+    NotificationText.Font = Enum.Font.GothamSemibold
+    NotificationText.Text = text
+    NotificationText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    NotificationText.TextSize = 14
+    NotificationText.TextWrapped = true
+
+    table.insert(self.Notifications, Notification)
+    self:UpdatePositions()
+
+    local targetY = -20 - (self.Height + self.Gap) * (#self.Notifications - 1)
+    local appearTween = TweenService:Create(Notification, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
+        Position = UDim2.new(1, -270, 1, targetY)
+    })
+    appearTween:Play()
+    
+    task.delay(3, function()
+        local index = table.find(self.Notifications, Notification)
+        if index then
+            table.remove(self.Notifications, index)
+            local disappearTween = TweenService:Create(Notification, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+                Position = UDim2.new(1, 20, 1, Notification.Position.Y.Offset)
+            })
+            disappearTween:Play()
+            disappearTween.Completed:Connect(function()
+                Notification:Destroy()
+                self:UpdatePositions()
+            end)
+        end
+    end)
+end
+
+function NotificationSystem:UpdatePositions()
+    for i, notification in ipairs(self.Notifications) do
+        local targetY = -20 - (self.Height + self.Gap) * (i - 1)
+        TweenService:Create(notification, TweenInfo.new(0.2), {
+            Position = UDim2.new(1, -270, 1, targetY)
+        }):Play()
+    end
+end
+
+local Library = {}
+
+-- Create the main library function
+function Library.new(title)
+    -- Remove existing UI
+    for _, gui in pairs(game:GetService("CoreGui"):GetChildren()) do
+        if gui.Name == "ModernUI" then
+            gui:Destroy()
+        end
+    end
+
+    -- Create Main GUI
+    local ScreenGui = Instance.new("ScreenGui")
+    local Main = Instance.new("Frame")
+    local UICorner = Instance.new("UICorner")
+    local TopBar = Instance.new("Frame")
+    local TopBarCorner = Instance.new("UICorner")
+    local Title = Instance.new("TextLabel")
+    local Container = Instance.new("ScrollingFrame")
+    local CloseButton = Instance.new("TextButton")
+    local UIStroke = Instance.new("UIStroke")
+    
+    -- GUI Setup
+    ScreenGui.Name = "ModernUI"
+    ScreenGui.Parent = game:GetService("CoreGui")
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    Main.Name = "Main"
+    Main.Parent = ScreenGui
+    Main.BackgroundColor3 = MAIN_COLOR
+    Main.Position = UDim2.new(0.5, -175, 0.5, -125)
+    Main.Size = UDim2.new(0, 350, 0, 250)
+    Main.BackgroundTransparency = 1
+    Main.Active = true
+    Main.Draggable = true
+    
+    UICorner.Parent = Main
+    UICorner.CornerRadius = UDim.new(0, 12)
+
+    UIStroke.Parent = Main
+    UIStroke.Color = ACCENT_COLOR
+    UIStroke.Thickness = 1.5
+    UIStroke.Transparency = 0.5
+
+    TopBar.Name = "TopBar"
+    TopBar.Parent = Main
+    TopBar.BackgroundColor3 = ACCENT_COLOR
+    TopBar.BackgroundTransparency = 0.8
+    TopBar.Size = UDim2.new(1, 0, 0, 30)
+
+    TopBarCorner.Parent = TopBar
+    TopBarCorner.CornerRadius = UDim.new(0, 12)
+    
+    Title.Name = "Title"
+    Title.Parent = TopBar
+    Title.BackgroundTransparency = 1
+    Title.Position = UDim2.new(0, 15, 0, 0)
+    Title.Size = UDim2.new(1, -40, 1, 0)
+    Title.Font = Enum.Font.GothamBold
+    Title.Text = title or "Modern UI"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextSize = 14
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+
+    CloseButton.Name = "CloseButton"
+    CloseButton.Parent = TopBar
+    CloseButton.BackgroundTransparency = 1
+    CloseButton.Position = UDim2.new(1, -30, 0, 0)
+    CloseButton.Size = UDim2.new(0, 30, 1, 0)
+    CloseButton.Font = Enum.Font.GothamBold
+    CloseButton.Text = "×"
+    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseButton.TextSize = 20
+    CloseButton.TextTransparency = 0.2
+    
+    Container.Name = "Container"
+    Container.Parent = Main
+    Container.BackgroundTransparency = 1
+    Container.Position = UDim2.new(0, 10, 0, 40)
+    Container.Size = UDim2.new(1, -20, 1, -50)
+    Container.ScrollBarThickness = 3
+    Container.ScrollBarImageColor3 = ACCENT_COLOR
+    Container.ScrollBarImageTransparency = 0.5
+
+    -- Animation function
+    local function playOpenAnimation()
+        Main.BackgroundTransparency = 1
+        Main.Position = UDim2.new(0.5, -175, 0.45, -125)
+        
+        local tweenInfo = TweenInfo.new(
+            AnimationConfig.OpenDuration,
+            AnimationConfig.OpenEasingStyle,
+            AnimationConfig.OpenEasingDirection
+        )
+
+        local fadeTween = TweenService:Create(Main, tweenInfo, {
+            BackgroundTransparency = TRANSPARENCY,
+            Position = UDim2.new(0.5, -175, 0.5, -125)
+        })
+
+        fadeTween:Play()
+
+        local children = Main:GetDescendants()
+        for i, child in ipairs(children) do
+            if child:IsA("GuiObject") and child ~= Main then
+                child.BackgroundTransparency = 1
+                local childTween = TweenService:Create(child, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, i * 0.05), {
+                    BackgroundTransparency = child.BackgroundTransparency
+                })
+                childTween:Play()
+            end
+        end
+    end
+
+    -- Close button functionality
+    CloseButton.MouseButton1Click:Connect(function()
+        ScreenGui.Enabled = false
+        NotificationSystem:CreateNotification("UI Hidden - Press K to show")
+    end)
+
+    -- Keybind handler
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and input.KeyCode == TOGGLE_KEY then
+            ScreenGui.Enabled = not ScreenGui.Enabled
+            if ScreenGui.Enabled then
+                playOpenAnimation()
+                NotificationSystem:CreateNotification("Welcome back to ZAM UI!")
+            else
+                NotificationSystem:CreateNotification("UI Hidden - Press K to show")
+            end
+        end
+    end)
+
+    local WindowLibrary = {}
+
+    function WindowLibrary:AddButton(text, callback)
+        local Button = Instance.new("TextButton")
+        local ButtonUICorner = Instance.new("UICorner")
+        local ButtonUIStroke = Instance.new("UIStroke")
+        
+        Button.Name = "Button"
+        Button.Parent = Container
+        Button.BackgroundColor3 = ACCENT_COLOR
+        Button.BackgroundTransparency = 0.8
+        Button.Size = UDim2.new(1, -10, 0, 35)
+        Button.Position = UDim2.new(0, 5, 0, #Container:GetChildren() * 40)
+        Button.Font = Enum.Font.GothamSemibold
+        Button.Text = text
+        Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Button.TextSize = 13
+        Button.AutoButtonColor = false
+        
+        ButtonUICorner.Parent = Button
+        ButtonUICorner.CornerRadius = UDim.new(0, 8)
+
+        ButtonUIStroke.Parent = Button
+        ButtonUIStroke.Color = ACCENT_COLOR
+        ButtonUIStroke.Thickness = 1.5
+        ButtonUIStroke.Transparency = 0.5
+        
+        Button.MouseEnter:Connect(function()
+            TweenService:Create(Button, TweenInfo.new(TWEEN_SPEED), {
+                BackgroundTransparency = 0.6
+            }):Play()
+        end)
+        
+        Button.MouseLeave:Connect(function()
+            TweenService:Create(Button, TweenInfo.new(TWEEN_SPEED), {
+                BackgroundTransparency = 0.8
+            }):Play()
+        end)
+        
+        Button.MouseButton1Click:Connect(function()
+            callback()
+            NotificationSystem:CreateNotification("Executed: " .. text)
+        end)
+        
+        Container.CanvasSize = UDim2.new(0, 0, 0, #Container:GetChildren() * 40 + 5)
+    end
+
+    function WindowLibrary:AddToggle(text, default, callback)
+        local Toggle = Instance.new("Frame")
+        local ToggleUICorner = Instance.new("UICorner")
+        local ToggleButton = Instance.new("TextButton")
+        local Status = Instance.new("Frame")
+        local StatusUICorner = Instance.new("UICorner")
+        local ToggleUIStroke = Instance.new("UIStroke")
+        
+        Toggle.Name = "Toggle"
+        Toggle.Parent = Container
+        Toggle.BackgroundColor3 = MAIN_COLOR
+        Toggle.BackgroundTransparency = 0.5
+        Toggle.Size = UDim2.new(1, -10, 0, 35)
+        Toggle.Position = UDim2.new(0, 5, 0, #Container:GetChildren() * 40)
+        
+        ToggleUICorner.Parent = Toggle
+        ToggleUICorner.CornerRadius = UDim.new(0, 8)
+
+        ToggleUIStroke.Parent = Toggle
+        ToggleUIStroke.Color = ACCENT_COLOR
+        ToggleUIStroke.Thickness = 1.5
+        ToggleUIStroke.Transparency = 0.7
+        
+        ToggleButton.Name = "ToggleButton"
+        ToggleButton.Parent = Toggle
+        ToggleButton.BackgroundTransparency = 1
+        ToggleButton.Size = UDim2.new(1, 0, 1, 0)
+        ToggleButton.Font = Enum.Font.GothamSemibold
+        ToggleButton.Text = text
+        ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ToggleButton.TextSize = 13
+        
+        Status.Name = "Status"
+        Status.Parent = Toggle
+        Status.BackgroundColor3 = default and ACCENT_COLOR or Color3.fromRGB(80, 80, 80)
+        Status.BackgroundTransparency = 0.3
+        Status.Position = UDim2.new(1, -45, 0.5, -8)
+        Status.Size = UDim2.new(0, 35, 0, 16)
+        
+        StatusUICorner.Parent = Status
+        StatusUICorner.CornerRadius = UDim.new(1, 0)
+        
+        local enabled = default
+        ToggleButton.MouseButton1Click:Connect(function()
+            enabled = not enabled
+            TweenService:Create(Status, TweenInfo.new(TWEEN_SPEED), {
+                BackgroundColor3 = enabled and ACCENT_COLOR or Color3.fromRGB(80, 80, 80)
+            }):Play()
+            callback(enabled)
+        end)
+        
+        Container.CanvasSize = UDim2.new(0, 0, 0, #Container:GetChildren() * 40 + 5)
+    end
+
+    playOpenAnimation()
+    NotificationSystem:CreateNotification("Welcome to ZAM UI! Press K to toggle")
+    
+    return WindowLibrary
+end
+
+-- Create Example UI
+local UI = Library.new("ZAM UI")
+
+-- Add example features
+UI:AddButton("Example Script", function()
+    print("Script executed!")
+end)
+
+UI:AddToggle("Example Toggle", false, function(enabled)
+    print("Toggle is now:", enabled)
+end)
+
+return Library
